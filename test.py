@@ -353,7 +353,7 @@ def direct_signal(img,ill,depths):
     plt.figure(figsize=(8, 6))
     plt.plot(x, yvals, 'orange',label='polyfit values',linewidth=3)
     plt.scatter(depth1d,roughDg1d,color='b',s=0.1)
-    plt.show()  
+    #plt.show()  
     
     Jc = np.zeros(img.shape)
     img = img/255
@@ -474,7 +474,7 @@ if __name__ == '__main__':
         # Stage 5: white balance
         print("Conducting white balance adjustment")
         subprocess.run(
-            ["python", "white.py", os.path.join(OUTPUT_DIR, prefix + "_jc.jpg")],
+            [sys.executable, "white.py", os.path.join(OUTPUT_DIR, prefix + "_jc.jpg")],
             check=True
         )
         print("White balancing complete")

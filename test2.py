@@ -266,7 +266,7 @@ if __name__ == '__main__':
         
         # Stage 2: LSAC illumination map
         print("Generating Illumination map")
-        subprocess.run([sys.executable, "LSAC2.py", filepath], check=True)
+        subprocess.run([sys.executable, "LSAC3.py", filepath], check=True)
         print("Successfully generated illumination map")
 
         # Load original image + generated intermediates

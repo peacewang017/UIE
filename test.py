@@ -9,6 +9,7 @@ import subprocess
 import skimage 
 import sys
 import time
+from scipy.optimize import curve_fit
 
 OUTPUT_DIR = "OutputImages"
 CURRENT_PREFIX = ""
@@ -225,6 +226,7 @@ def test_err(p, x, y, s):
 
 def fit(x,a,b,c,d):
     return a * np.exp(b * x) + c * np.exp(d * x)
+
 def fit1(p,x):
     a,b,c,d=p
     return a * np.exp(b * x) + c * np.exp(d * x)
@@ -333,3 +335,192 @@ if __name__ == '__main__':
     Endtime = datetime.datetime.now()
     Time = Endtime - starttime
     print('Time', Time)
+
+# # sea thru
+# if __name__ == '__main__':
+#     starttime = datetime.datetime.now()
+
+#     input_dir = "InputImages"
+#     os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+#     files = [f for f in os.listdir(input_dir) if os.path.isfile(os.path.join(input_dir, f))]
+#     files = natsort.natsorted(files)
+
+#     for file in files:
+#         filepath = os.path.join(input_dir, file)
+#         prefix = os.path.splitext(file)[0]
+#         CURRENT_PREFIX = prefix
+
+#         print(f"--- Processing {file} using Sea-thru Model ---")
+
+#         # Stage 1: Depth map generation
+#         subprocess.run([sys.executable, "newestdepth.py", filepath], check=True)
+        
+#         # Stage 2: Illumination map generation
+#         subprocess.run([sys.executable, "LSAC3.py", filepath], check=True)
+
+#         # Load intermediates
+#         img = cv2.imread(filepath)
+#         depth_map = cv2.imread(os.path.join(OUTPUT_DIR, prefix + "_depth_map.jpg"), cv2.IMREAD_GRAYSCALE)
+#         estill = cv2.imread(os.path.join(OUTPUT_DIR, prefix + "_lsac.jpg"))
+
+#         if img is None or depth_map is None or estill is None:
+#             print(f"Error loading components for {file}. Skipping.")
+#             continue
+
+#         # Stage 3: Sea-thru Backscatter Removal
+#         print("Executing Sea-thru backscatter removal...")
+#         # We pass depth_map here because Sea-thru backscatter is depth-dependent
+#         img_no_backscatter, b_params = backscatter_seathru(img, depth_map, 0.01)
+
+#         # Stage 4: Sea-thru Attenuation Restoration
+#         print("Executing Sea-thru attenuation restoration...")
+#         jc_image = direct_signal_seathru(img_no_backscatter, depth_map, estill)
+
+#         # Stage 5: White Balance (using the same white.py tool)
+#         print("Finalizing with white balance...")
+#         subprocess.run(
+#             [sys.executable, "white.py", os.path.join(OUTPUT_DIR, prefix + "_jc_seathru.jpg")],
+#             check=True
+#         )
+#         print(f"Completed {file}")
+
+#     endtime = datetime.datetime.now()
+#     print('Total Execution Time (Sea-thru):', endtime - starttime)
+
+# # WCID
+# if __name__ == '__main__':
+#     starttime = datetime.datetime.now()
+
+#     input_dir = "InputImages"
+#     os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+#     files = [f for f in os.listdir(input_dir) if os.path.isfile(os.path.join(input_dir, f))]
+#     files = natsort.natsorted(files)
+
+#     for file in files:
+#         filepath = os.path.join(input_dir, file)
+#         prefix = os.path.splitext(file)[0]
+#         CURRENT_PREFIX = prefix
+
+#         print(f"\n--- Pipeline: Processing {file} using WCID Model ---")
+
+#         # Stage 1: Depth Estimation (Shared Pipeline Step)
+#         print("Pipeline Step 1: Generating depth map...")
+#         subprocess.run([sys.executable, "newestdepth.py", filepath], check=True)
+        
+#         # Load original image and the generated depth map
+#         img = cv2.imread(filepath)
+#         depth_map = cv2.imread(os.path.join(OUTPUT_DIR, prefix + "_depth_map.jpg"), cv2.IMREAD_GRAYSCALE)
+
+#         if img is None or depth_map is None:
+#             print(f"Pipeline Error: Missing inputs for {file}. Skipping.")
+#             continue
+
+#         # Stage 2: Physical Model - Dehazing
+#         print("Pipeline Step 2a: Executing WCID Dehazing (Scattering Removal)...")
+#         img_dehazed = dehaze_wcid(img, depth_map)
+#         cv2.imwrite(os.path.join(OUTPUT_DIR, prefix + "_wcid_dehazed.jpg"), img_dehazed)
+
+#         # Stage 2: Physical Model - Wavelength Compensation
+#         print("Pipeline Step 2b: Executing WCID Wavelength Compensation (Absorption Fix)...")
+#         img_compensated = wavelength_compensation_wcid(img_dehazed, depth_map)
+#         final_wcid_path = os.path.join(OUTPUT_DIR, prefix + "_jc_wcid.jpg")
+#         cv2.imwrite(final_wcid_path, img_compensated)
+
+#         # Stage 3: Post-processing - White Balance (Shared Pipeline Step)
+#         print("Pipeline Step 3: Finalizing with White Balance...")
+#         subprocess.run(
+#             [sys.executable, "white.py", final_wcid_path],
+#             check=True
+#         )
+#         print(f"Pipeline Finished: {file}")
+
+#     endtime = datetime.datetime.now()
+#     print('\n' + '='*40)
+#     print('Total Execution Time (WCID Pipeline):', endtime - starttime)
+#     print('='*40)
+    
+# # UDCP
+# if __name__ == '__main__':
+#     starttime = datetime.datetime.now()
+
+#     input_dir = "InputImages"
+#     os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+#     files = [f for f in os.listdir(input_dir) if os.path.isfile(os.path.join(input_dir, f))]
+#     files = natsort.natsorted(files)
+
+#     for file in files:
+#         filepath = os.path.join(input_dir, file)
+#         prefix = os.path.splitext(file)[0]
+#         CURRENT_PREFIX = prefix
+
+#         print(f"\n--- Pipeline: Processing {file} using UDCP Model ---")
+
+#         # Step 1: Depth Estimation
+#         subprocess.run([sys.executable, "newestdepth.py", filepath], check=True)
+        
+#         img = cv2.imread(filepath)
+#         depth_map = cv2.imread(os.path.join(OUTPUT_DIR, prefix + "_depth_map.jpg"), cv2.IMREAD_GRAYSCALE)
+
+#         if img is None or depth_map is None:
+#             continue
+
+#         # Step 2: UDCP Restoration (B/G channel prior)
+#         print("Pipeline Step 2: Executing UDCP Physical Restoration...")
+#         img_restored = restore_udcp(img, depth_map)
+#         output_path = os.path.join(OUTPUT_DIR, prefix + "_jc_udcp.jpg")
+#         cv2.imwrite(output_path, img_restored)
+
+#         # Step 3: White Balance
+#         print("Pipeline Step 3: Finalizing with White Balance...")
+#         subprocess.run([sys.executable, "white.py", output_path], check=True)
+#         print(f"UDCP Finished: {file}")
+
+#     endtime = datetime.datetime.now()
+#     print('\n' + '='*40)
+#     print('Total Execution Time (UDCP Pipeline):', endtime - starttime)
+#     print('='*40)
+    
+# # IBLA
+# if __name__ == '__main__':
+#     starttime = datetime.datetime.now()
+
+#     input_dir = "InputImages"
+#     os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+#     files = [f for f in os.listdir(input_dir) if os.path.isfile(os.path.join(input_dir, f))]
+#     files = natsort.natsorted(files)
+
+#     for file in files:
+#         filepath = os.path.join(input_dir, file)
+#         prefix = os.path.splitext(file)[0]
+#         CURRENT_PREFIX = prefix
+
+#         print(f"\n--- Pipeline: Processing {file} using IBLA Model ---")
+
+#         # Step 1: Depth Estimation
+#         subprocess.run([sys.executable, "newestdepth.py", filepath], check=True)
+        
+#         img = cv2.imread(filepath)
+#         depth_map = cv2.imread(os.path.join(OUTPUT_DIR, prefix + "_depth_map.jpg"), cv2.IMREAD_GRAYSCALE)
+
+#         if img is None or depth_map is None:
+#             continue
+
+#         # Step 2: IBLA Restoration (Blurriness + Absorption)
+#         print("Pipeline Step 2: Executing IBLA Physical Restoration...")
+#         img_restored = restore_ibla(img, depth_map)
+#         output_path = os.path.join(OUTPUT_DIR, prefix + "_jc_ibla.jpg")
+#         cv2.imwrite(output_path, img_restored)
+
+#         # Step 3: White Balance
+#         print("Pipeline Step 3: Finalizing with White Balance...")
+#         subprocess.run([sys.executable, "white.py", output_path], check=True)
+#         print(f"IBLA Finished: {file}")
+
+#     endtime = datetime.datetime.now()
+#     print('\n' + '='*40)
+#     print('Total Execution Time (IBLA Pipeline):', endtime - starttime)
+#     print('='*40)

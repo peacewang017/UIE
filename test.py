@@ -281,7 +281,7 @@ if __name__ == '__main__':
             # Stage 2: LSAC illumination map
             print("Generating Illumination map")
             t0 = time.perf_counter()
-            subprocess.run([sys.executable, "LSAC_guided_luma_regularizer_joint_guide.py", filepath], check=True)
+            subprocess.run([sys.executable, "LSAC2.py", filepath], check=True)
             benchmark_line(benchmark_file, file, "lsac", time.perf_counter() - t0)
             print("Successfully generated illumination map")
 

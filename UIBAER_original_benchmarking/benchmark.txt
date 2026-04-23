@@ -1,2 +1,12 @@
 file	step	seconds
 LFT_3403.png	depth	675.602842s
+LFT_3403.png	lsac	25193.611148s
+LFT_3403.png	backscatter	38.633939s
+LFT_3403.png	attenuation_restoration	0.519967s
+LFT_3403.png	white_balance	146.236305s
+RGT_0207.png	depth	957.736642s
+RGT_0207.png	lsac	21811.862162s
+RGT_0207.png	backscatter	22.593609s
+RGT_0207.png	attenuation_restoration	0.549217s
+RGT_0207.png	white_balance	145.561644s
+RGT_0216.png	depth	900.316412s

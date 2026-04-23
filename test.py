@@ -8,6 +8,7 @@ import datetime
 import subprocess
 import skimage 
 import sys
+import time
 
 OUTPUT_DIR = "OutputImages"
 CURRENT_PREFIX = ""
@@ -228,256 +229,106 @@ def fit1(p,x):
     a,b,c,d=p
     return a * np.exp(b * x) + c * np.exp(d * x)
 
-def direct_signal(img,ill,depths):
-    #print(np.min(img),np.max(img))
-    roughDC = np.zeros(img.shape)
-    #roughDC = np.float64(roughDC)
-    #print(roughDC)
-    ill = ill/255
-    #print(ill)
-    depths = (depths/255)*30
-    #print(depths)
-    #ill = np.float64(ill)
-    #print(ill)
-    #depths = np.float64(depths)
-    #print(depths)
-    
-    
-    for i in range(0,3):
-        if i == 0:
-            roughDC[:,:,i] = -np.log(ill[:,:,i])/depths[:,:]
-        if i == 1:
-            roughDC[:,:,i] = -np.log(ill[:,:,i])/depths[:,:]
-        if i == 2:
-            roughDC[:,:,i] = -np.log(ill[:,:,i])/depths[:,:]
-    #roughDb = np.zeros[img.shape[0],img.shape[1]]
-    (roughDb,roughDg,roughDr) = cv2.split(roughDC)
-    #roughDb = roughDC[:,:,0]        
-    depth1d = depths.flatten()
-    roughDg1d = roughDg.flatten()
-
-    test=np.argwhere(np.isinf(roughDg1d))
-    
-    
-    test = test.flatten()
-    #print(np.max(roughDg1d),np.min(roughDg1d))
-    #print(test)
-    roughDg1d = np.delete(roughDg1d,test)
-    depth1d = np.delete(depth1d,test)
-    #plt.scatter(depth1d,roughDb1d,color="red",s=0.1)
-    #plt.show()
-    #print(roughDr1d.shape)
-    #print(roughDr1d.shape)
-    #print(depth1d)
-    #print(type(depth1d))
-    #plt.scatter(depth1d,roughDr1d)
-    #print(roughDr1d[0],depth1d[0])
-    '''
-    delt = []
-    for i in range(roughDr1d.shape[0]):
-        if roughDr1d[i] > 0.19 and 20<depth1d[i]:
-            delt = np.append(delt,i)
-    delt = delt.astype(int)
-    print(delt.shape)
-    roughDr1d = np.delete(roughDr1d,delt)
-    depth1d = np.delete(depth1d,delt)
-    print(roughDr1d.shape)
-    '''
-
-    '''
-    p0 = [1,-1,1,-1]
-    s="Test the number of iteration"
-    Para=optimize.leastsq(test_err2,p0,args=(depth1d,roughDr1d,s))
-    a,b,c,d = Para[0]
-    print("a=",a,'\n',"b=",b,"c=",c,"d=",d)
-    plt.figure(figsize=(8,6))
-    plt.scatter(depth1d,roughDr1d,color="red",s=0.1)
-    x=np.linspace(15,30)
-    y=a * np.exp(b * x) + c * np.exp(d * x)
-    plt.plot(x,y,color="orange",linewidth=2)
-    #plt.legend()
-    plt.show()
-    '''
-    '''
-    aar = 13.150756479344743
-    bbr = -0.7867214770755953
-    ccr = 0.3516722662800257
-    ddr = -0.03542441682996397
-    aab = 52.016718157470265
-    bbb = -1.3328650557402235
-    ccb = 0.04265857011788078
-    ddb = -4.095876900067823e-31
-    aag = 58.51971316729428
-    bbg = -1.338099348754493
-    ccg = 0.047919163618505387
-    ddg = -5.228101106579538e-37
-    '''
-    
-    aar = 0.10551773436295755
-    bbr = -8.089204799801317e-10
-    ccr = 78281434077916.39
-    ddr = -2.337517254290636
-    aab = 1.036472773743879
-    bbb = -0.657541188189825
-    ccb = 0.2653342919673902
-    ddb = -0.20791393162982874
-    aag = 0.3472418332457873
-    bbg = -0.5682546593444208
-    ccg = 0.04725885290112048
-    ddg = -0.09209111289125627
-    
-    #print(roughDb1d)
-    #ta,tb,tc,td = nls2(depth1d,roughDr1d)
-    #print(ta,tb,tc,td)
-    #x=np.linspace(0.4,1)
-    #y=ta * np.exp(tb * x) + tc * np.exp(td * x)
-    #plt.plot(x,y,color="orange",label="Fitting Curve",linewidth=2)
-    #plt.legend()
-    #plt.show()
-    
-    #test = []
-    #print(np.argwhere(np.isnan(roughDr1d)))
-    #print(test.shape)
-    #print(roughDr1d.shape)
-    #roughDr1d = np.nan_to_num(roughDr1d,posinf=9)
-    
-    popt, pcov = optimize.curve_fit(fit, depth1d, roughDg1d,bounds=([0,-np.inf,0,-np.inf],[np.inf,0,np.inf,0]))
-    a = popt[0]
-    b = popt[1]
-    c = popt[2]
-    d = popt[3]
-    print(a,b,c,d)
-    x=np.linspace(10,30)
-    print(a * np.exp(b * 12) + c * np.exp(d * 12))
-    yvals=fit(x,a,b,c,d)
-    plt.figure(figsize=(8, 6))
-    plt.plot(x, yvals, 'orange',label='polyfit values',linewidth=3)
-    plt.scatter(depth1d,roughDg1d,color='b',s=0.1)
-    #plt.show()  
-    
+def direct_signal(img,Ec,depths):
     Jc = np.zeros(img.shape)
-    img = img/255
-    #print(np.max(img))
-    for i in range(0,3):
-        if i == 0:
-            Jc[:,:,i] = img[:,:,i]*np.exp(1/(1+np.exp(-(aab*np.exp(bbb*depths[:,:])+ccb*np.exp(ddb*depths[:,:]))*depths[:,:])))#(1/(1+np.exp((aab*np.exp(bbb*depths[:,:])+ccb*np.exp(ddb*depths[:,:]))*depths[:,:])))#np.exp((aab*np.exp(bbb*depths)+ccb*np.exp(ddb*depths))*depths)
-        if i == 1:
-            Jc[:,:,i] = img[:,:,i]*np.exp(1/(1+np.exp(-(aag*np.exp(bbg*depths[:,:])+ccg*np.exp(ddg*depths[:,:]))*depths[:,:])))#(1/(1+np.exp((aag*np.exp(bbg*depths[:,:])+ccg*np.exp(ddg*depths[:,:]))*depths[:,:])))#np.exp((aag*np.exp(bbg*depths)+ccg*np.exp(ddg*depths))*depths)
-        if i == 2:
-            Jc[:,:,i] = img[:,:,i]*np.exp(1/(1+np.exp(-(aar*np.exp(bbr*depths[:,:])+ccr*np.exp(ddr*depths[:,:]))*depths[:,:])))#(1/(1+np.exp((aar*np.exp(bbr*depths[:,:])+ccr*np.exp(ddr*depths[:,:]))*depths[:,:])))#np.exp((aar*np.exp(bbr*depths)+ccr*np.exp(ddr*depths))*depths)
-    zzz = np.zeros(depths.shape)
-    xxx = np.zeros(depths.shape)
-    yyy = np.zeros(depths.shape)
-    zzz[:,:] = np.exp(np.log((aab*np.exp(bbb*depths[:,:])+ccb*np.exp(ddb*depths[:,:]))*depths[:,:]))
-    xxx[:,:] = np.exp(np.log((aag*np.exp(bbg*depths[:,:])+ccg*np.exp(ddg*depths[:,:]))*depths[:,:]))
-    yyy[:,:] = np.exp(np.log((aar*np.exp(bbr*depths[:,:])+ccr*np.exp(ddr*depths[:,:]))*depths[:,:]))
-    print(np.mean(zzz),np.mean(xxx),np.mean(yyy))
-    Jc = (Jc/np.max(Jc))*255
-    print(np.max(Jc))
-    #Jc = np.clip(Jc,0,160)
-    #Jc = Jc*0.75
-    #Jc = np.clip(Jc,0,255)
+    img = img/255.0
+    depths = depths / 255 * 30 # not sure where 30 comes from
+    Ec = Ec / 255
+    Ec = np.clip(Ec, 1e-6, 1.0)
+    Jc = img / Ec
+    #Jc[:,:,2] *= 0.1
+    Jc = np.clip(Jc, 0.0, 1.0)
+    Jc = (Jc * 255.0).astype(np.uint8)
     
-    #Jc = Jc+(1.8445552180408813)
-    #Jc = Jc*255
-    
-    #Jc = np.clip(Jc,0,255)
-    #cv2.imwrite("Jc0209.jpg",Jc)
     cv2.imwrite(os.path.join(OUTPUT_DIR, CURRENT_PREFIX + "_jc.jpg"), Jc)
-    return roughDC
+    return Jc
     
-#np.seterr(over='ignore')
-#if __name__ == '__main__':
-#    pass
-#starttime = datetime.datetime.now()
-#folder = "."
-#path = folder + "InputImages"
-#files = os.listdir(path)
-#files =  natsort.natsorted(files)
-
-#for i in range(len(files)):
-#    file = files[i]
-#    filepath = path + "/" + file
-#    prefix = file.split('.')[0]
-#    if os.path.isfile(filepath):
-#        print('********    file   ********',file)
-#        img = cv2.imread(filepath)
-        #depth_map = cv2.imread('D:/DCP/InputDepth/test242525.jpg', cv2.IMREAD_GRAYSCALE)
-        #estill = cv2.imread('D:/DCP/LSAregg2626.jpg')
-        #testDC = cv2.imread('D:/DCP/InputImages/RGT_0209.jpg')
-#    DC = backscatter(img, 0.01)
-    #print(DC)
-#    JC = direct_signal(testDC,estill,depth_map)
-        #cv2.imwrite('OutputImages/' + prefix + '_dark.jpg', imgDark)
-        #transmission, sceneRadiance = getRecoverScene(img)
-        #cv2.imwrite('OutputImages/' + prefix + '_DCP_TM.jpg', np.uint8(transmission * 255))
-        #cv2.imwrite('OutputImages/' + prefix + '_DCP.jpg', sceneRadiance)
-#Endtime = datetime.datetime.now()
-#Time = Endtime - starttime
-#print('Time', Time)
+def benchmark_line(handle, file_name, step_name, elapsed):
+    line = f"{file_name}	{step_name}	{elapsed:.6f}s\n"
+    print(line.strip())
+    handle.write(line)
+    handle.flush()
 
 np.seterr(over='ignore')
 
 if __name__ == '__main__':
+    start_total = time.perf_counter()
     starttime = datetime.datetime.now()
 
     input_dir = "InputImages"
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
+    benchmark_path = "benchmark.txt"
+
     files = [f for f in os.listdir(input_dir) if os.path.isfile(os.path.join(input_dir, f))]
     files = natsort.natsorted(files)
 
-    for file in files:
-        filepath = os.path.join(input_dir, file)
-        prefix = os.path.splitext(file)[0]
+    with open(benchmark_path, "w") as benchmark_file:
+        benchmark_file.write("Benchmark Results")
+        benchmark_file.write("=================")
 
-        print("Running file :", file)
+        for file in files:
+            filepath = os.path.join(input_dir, file)
+            prefix = os.path.splitext(file)[0]
 
-        # Stage 1: depth map
-        subprocess.run([sys.executable, "newestdepth.py", filepath], check=True)
-        print("Successfully generated depth images")
-        
-        # Stage 2: LSAC illumination map
-        print("Generating Illumination map")
-        subprocess.run([sys.executable, "LSAC2.py", filepath], check=True)
-        print("Successfully generated illumination map")
+            print("Running file :", file)
 
-        # Load original image + generated intermediates
-        # TODO too much file i/o, this should be optimized
-        img = cv2.imread(filepath)
-        depth_map = cv2.imread(os.path.join(OUTPUT_DIR, prefix + "_depth_map.jpg"), cv2.IMREAD_GRAYSCALE)
-        estill = cv2.imread(os.path.join(OUTPUT_DIR, prefix + "_lsac.jpg"))
-        print("Reloaded original image, depth map, illumination image")
+            t0 = time.perf_counter()
+            subprocess.run([sys.executable, "newestdepth.py", filepath], check=True)
+            benchmark_line(benchmark_file, file, "depth", time.perf_counter() - t0)
+            print("Successfully generated depth images")
+            
+            # Stage 2: LSAC illumination map
+            print("Generating Illumination map")
+            t0 = time.perf_counter()
+            subprocess.run([sys.executable, "LSAC_guided_luma_regularizer_joint_guide.py", filepath], check=True)
+            benchmark_line(benchmark_file, file, "lsac", time.perf_counter() - t0)
+            print("Successfully generated illumination map")
 
-        if img is None:
-            print("Skipping {}, could not load input image".format(file))
-            continue
-        if depth_map is None:
-            print("Skipping {}, missing depth map".format(file))
-            continue
-        if estill is None:
-            print("Skipping {}, missing LSAC map".format(file))
-            continue
+            # Load original image + generated intermediates
+            # TODO too much file i/o, this should be optimized
+            img = cv2.imread(filepath)
+            depth_map = cv2.imread(os.path.join(OUTPUT_DIR, prefix + "_depth_map.jpg"), cv2.IMREAD_GRAYSCALE)
+            estill = cv2.imread(os.path.join(OUTPUT_DIR, prefix + "_lsac.jpg"))
+            print("Reloaded original image, depth map, illumination image")
 
-        CURRENT_PREFIX = prefix
+            if img is None:
+                print("Skipping {}, could not load input image".format(file))
+                continue
+            if depth_map is None:
+                print("Skipping {}, missing depth map".format(file))
+                continue
+            if estill is None:
+                print("Skipping {}, missing LSAC map".format(file))
+                continue
 
-        # Stage 3: backscatter removal
-        print("Conducting backscatter removal")
-        testDC = backscatter(img, 0.01)
-        print("Successfully removed backscatter")
-        
-        # Stage 4: attenuation restoration
-        print("Doing attenuation restoration")
-        direct_signal(testDC, estill, depth_map)
-        print("attenuation restoration complete")
+            CURRENT_PREFIX = prefix
 
-        # Stage 5: white balance
-        print("Conducting white balance adjustment")
-        subprocess.run(
-            [sys.executable, "white.py", os.path.join(OUTPUT_DIR, prefix + "_jc.jpg")],
-            check=True
-        )
-        print("White balancing complete")
+            # Stage 3: backscatter removal
+            print("Conducting backscatter removal")
+            t0 = time.perf_counter()
+            testDC = backscatter(img, 0.01)
+            benchmark_line(benchmark_file, file, "backscatter", time.perf_counter() - t0)
+            print("Successfully removed backscatter")
+            
+            # Stage 4: attenuation restoration
+            print("Doing attenuation restoration")
+            t0 = time.perf_counter()
+            direct_signal(testDC, estill, depth_map)
+            benchmark_line(benchmark_file, file, "attenuation_restoration", time.perf_counter() - t0)
+            print("attenuation restoration complete")
+
+            # Stage 5: white balance
+            print("Conducting white balance adjustment")
+            t0 = time.perf_counter()
+            subprocess.run(
+                [sys.executable, "white.py", os.path.join(OUTPUT_DIR, prefix + "_jc.jpg")],
+                check=True
+            )
+            benchmark_line(benchmark_file, file, "white_balance", time.perf_counter() - t0)
+            print("White balancing complete")
+
+        benchmark_line(benchmark_file, "ALL", "total", time.perf_counter() - start_total)
 
     Endtime = datetime.datetime.now()
     Time = Endtime - starttime

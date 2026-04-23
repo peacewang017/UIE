@@ -78,4 +78,5 @@ for i in range(1000):
     
 imgdark = cv2.merge([imgab,imgag,imgar])
 imgdark = imgdark*2
-cv2.imwrite('D:/DCP/LSAregg3374.jpg',imgdark)
+#cv2.imwrite('D:/DCP/LSAregg3374.jpg',imgdark)
+cv2.imwrite(os.path.join("OutputImages", prefix + "_lsac.jpg"), imgdark)

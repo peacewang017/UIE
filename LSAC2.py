@@ -120,4 +120,4 @@ total_lossr = np.array(total_lossr)
 imgdark = cv2.merge([imgab,imgag,imgar])
 imgdark = imgdark*2
 #cv2.imwrite('D:/DCP/LSAregg3374.jpg',imgdark)
-cv2.imwrite(os.path.join("OutputImages", prefix + "_lsac.jpg"), imgdark)
+cv2.imwrite(os.path.join("OutputImages", prefix + "_lsac.jpg"), imgdark) # To allow us to be end-to-end

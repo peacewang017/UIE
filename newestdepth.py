@@ -33,68 +33,44 @@ def getMinChannel(img):
 
 
 def getDarkChannel(Ib, Ig, Ir, blockSize, Sb, Sg, Sr, Wb, Wg, Wr):
-    
-    addSize = int((blockSize - 1) / 2)
-    newHeight = img.shape[0] + blockSize - 1
-    newWidth = img.shape[1] + blockSize - 1
-    
-    #print(Ir)
+    pad = int((blockSize - 1) / 2)   # for blockSize=5, this is 2 in original code
+    # but your actual neighborhood is only center/up/down/left/right by 1 pixel,
+    # so use a 1-pixel border for this vectorized version
+    pad = 1
 
-    imgbMiddle = np.zeros((newHeight, newWidth))
-    imggMiddle = np.zeros((newHeight, newWidth))
-    imgrMiddle = np.zeros((newHeight, newWidth))
-    #mincmiddle = np.zeros((newHeight, newWidth))
-    imgbMiddle[:, :] = 1
-    imggMiddle[:, :] = 1
-    imgrMiddle[:, :] = 1
-    # print('imgMiddle',imgMiddle)
-    # print('type(newHeight)',type(newHeight))
-    # print('type(addSize)',type(addSize))
-    imgbMiddle[addSize:newHeight - addSize, addSize:newWidth - addSize] = Ib
-    imggMiddle[addSize:newHeight - addSize, addSize:newWidth - addSize] = Ig
-    imgrMiddle[addSize:newHeight - addSize, addSize:newWidth - addSize] = Ir
-    #mincmiddle[addSize:newHeight - addSize, addSize:newWidth - addSize] = minchannel
-    # print('imgMiddle', imgMiddle)
-    imgbDark = np.zeros((img.shape[0], img.shape[1]))
-    imggDark = np.zeros((img.shape[0], img.shape[1]))
-    imgrDark = np.zeros((img.shape[0], img.shape[1]))
-    #newminchannel = np.zeros((img.shape[0], img.shape[1]), np.uint8)
-    localMinb = 255
-    localMing = 255
-    localMinr = 255
-    for i in range(addSize, newHeight - addSize):
-        
-        for j in range(addSize, newWidth - addSize):
-            localMinb = 1
-            localMing = 1
-            localMinr = 1
-            for k in range(i - addSize, i + addSize + 1):
-                for l in range(j - addSize, j + addSize + 1):
-                    itemb = imgbMiddle.item((k,l))
-                    itemg = imggMiddle.item((k,l))
-                    itemr = imgrMiddle.item((k,l))
-                    #print(1 - Wb*abs(Sb-itemb))
-                    if 1 - Wb*abs(Sb-itemb) < localMinb:
-                        localMinb = 1 - Wb*abs(Sb-itemb)
-                    elif 1 - Wg*abs(Sg-itemg) < localMing:
-                        localMing = 1 - Wg*abs(Sg-itemg)
-                    elif 1 - Wr*abs(Sr-itemr) < localMing:
-                        localMinr = 1 - Wr*abs(Sr-itemr)
-                        #localminc = mincmiddle.item((k,l))
-                        #print(localminc)
-            #newminchannel[i - addSize, j - addSize] = localminc
-            #print(localMinb)
-            imgbDark[i - addSize, j - addSize] = localMinb
-            imggDark[i - addSize, j - addSize] = localMing
-            imgrDark[i - addSize, j - addSize] = localMinr
-    #print(img)
-    print(imgrDark)
-    return imgbDark,imggDark,imgrDark
+    imgbMiddle = np.pad(Ib, ((pad, pad), (pad, pad)), mode='constant', constant_values=1).astype(np.float32)
+    imggMiddle = np.pad(Ig, ((pad, pad), (pad, pad)), mode='constant', constant_values=1).astype(np.float32)
+    imgrMiddle = np.pad(Ir, ((pad, pad), (pad, pad)), mode='constant', constant_values=1).astype(np.float32)
+
+    b0 = 1 - Wb * np.abs(Sb - imgbMiddle[1:-1, 1:-1])
+    b1 = 1 - Wb * np.abs(Sb - imgbMiddle[:-2, 1:-1])
+    b2 = 1 - Wb * np.abs(Sb - imgbMiddle[2:, 1:-1])
+    b3 = 1 - Wb * np.abs(Sb - imgbMiddle[1:-1, :-2])
+    b4 = 1 - Wb * np.abs(Sb - imgbMiddle[1:-1, 2:])
+
+    g0 = 1 - Wg * np.abs(Sg - imggMiddle[1:-1, 1:-1])
+    g1 = 1 - Wg * np.abs(Sg - imggMiddle[:-2, 1:-1])
+    g2 = 1 - Wg * np.abs(Sg - imggMiddle[2:, 1:-1])
+    g3 = 1 - Wg * np.abs(Sg - imggMiddle[1:-1, :-2])
+    g4 = 1 - Wg * np.abs(Sg - imggMiddle[1:-1, 2:])
+
+    r0 = 1 - Wr * np.abs(Sr - imgrMiddle[1:-1, 1:-1])
+    r1 = 1 - Wr * np.abs(Sr - imgrMiddle[:-2, 1:-1])
+    r2 = 1 - Wr * np.abs(Sr - imgrMiddle[2:, 1:-1])
+    r3 = 1 - Wr * np.abs(Sr - imgrMiddle[1:-1, :-2])
+    r4 = 1 - Wr * np.abs(Sr - imgrMiddle[1:-1, 2:])
+
+    imgbDark = np.minimum.reduce([b0, b1, b2, b3, b4])
+    imggDark = np.minimum.reduce([g0, g1, g2, g3, g4])
+    imgrDark = np.minimum.reduce([r0, r1, r2, r3, r4])
+
+    return imgbDark, imggDark, imgrDark
+
 #file = open(r'D:/DCP/filepath.txt')
 #path = file.readline()
 #print(path)
 #img = cv2.imread(path)
-print("here2")
+#print("here2")
 if len(sys.argv) < 2:
     raise ValueError("Usage: python newestdepth.py <input_image_path>")
 
@@ -105,46 +81,53 @@ if img is None:
 
 prefix = os.path.splitext(os.path.basename(path))[0]
 os.makedirs("OutputImages", exist_ok=True)
-print("here make dirs")
+#print("here make dirs")
 #grayimg = cv2.imread('D:/DCP/test4.jpg')
 gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 #grayimg = cv2.cvtColor(grayimg, cv2.COLOR_BGR2GRAY)
-kernelx = np.array([[1, 0, -1], 
-                    [2, 0, -2], 
-                    [1, 0, -1]])
-kernely = np.array([[1, 2, 1], 
-                    [0, 0, 0], 
-                    [-1, -2, -1]])
-SOBELX=cv2.filter2D(gray,-1,kernelx)
-SOBELY=cv2.filter2D(gray,-1,kernely)
-print("here post sobel")
-#G=np.sqrt(np.square(SOBELX)+np.square(SOBELY))
-G=abs(SOBELX)+abs(SOBELY)
-#G=G.astype(np.uint8)
-print(G)
-print(np.max(G),np.min(G))
+# Sobel
+#kernelx = np.array([[1, 0, -1], [2, 0, -2], [1, 0, -1]])
+#kernely = np.array([[1, 2, 1], [0, 0, 0], [-1, -2, -1]])
+#sobelx = cv2.filter2D(gray, -1, kernelx)
+#sobely = cv2.filter2D(gray, -1, kernely)
+#g = abs(sobelx) + abs(sobely)
+
+# prewitt
+kernelx = np.array([[1, 0, -1],
+                    [1, 0, -1],
+                    [1, 0, -1]], dtype=np.float32)
+
+kernely = np.array([[1, 1, 1],
+                    [0, 0, 0],
+                    [-1, -1, -1]], dtype=np.float32)
+
+PREWITTX = cv2.filter2D(gray, cv2.CV_32F, kernelx)
+PREWITTY = cv2.filter2D(gray, cv2.CV_32F, kernely)
+G = np.abs(PREWITTX) + np.abs(PREWITTY)
+G = np.clip(G, 0, 255).astype(np.uint8)
+
 window = np.ones((7,7), np.uint8)
 window2 = np.ones((8,8), np.uint8)
 img_dilation = cv2.dilate(G, window, iterations=1)
 img_erosion = cv2.erode(img_dilation, window2, iterations=1) 
 img_median=cv2.medianBlur(img_erosion,5)
 a=np.max(img_median)-np.min(img_median)
-print(a)
+#print(a)
 g = np.zeros(img_median.shape)
-print(img_median.shape)
+#print(img_median.shape)
 #for i in range (img_median.shape[0]):
  #   print("calculating pixel row")
  #   for j in range (img_median.shape[1]):
   #      g[i][j]=(img_median[i][j]-np.min(img_median))/a
 g = (img_median - np.min(img_median)) / a # numpy vectorization speeds this up a lot but we should run both just to be double sure
-print(np.max(g),np.min(g))
+#print(np.max(g),np.min(g))
     #Dr
 Dr=np.zeros(g.shape)
 Dr=(1-g)*255
 Dr=np.around(Dr)
-print("here3")
+#print("here3")
 #cv2.imwrite('D:/DCP/roughdepthabs12354453.jpg',Dr)
-print('Dr',Dr)
+#print('Dr',Dr)
 
 regDr=np.array(Dr).reshape(Dr.shape[0]*Dr.shape[1],1)
 #print('regDr',regDr)    
@@ -156,7 +139,7 @@ regDr = regDr/255
 regIb = regIb/255
 regIg = regIg/255
 regIr = regIr/255
-print('regIb',regIb)
+#print('regIb',regIb)
 modelr=LinearRegression()
 Rreg=modelr.fit(regDr,regIr)
 Ar=modelr.coef_
@@ -185,7 +168,7 @@ plt.scatter(regDr, regIb,color='blue',s = 0.1,alpha=0.6)
 plt.plot(regDr, modelb.predict(regDr),color='orange',linewidth =3)
 plt.show()    
 '''
-print('Ac:',Ar,Ag,Ab)
+#print('Ac:',Ar,Ag,Ab)
 Ar = Ar.item()
 Ag = Ag.item()
 Ab = Ab.item()
@@ -204,7 +187,7 @@ if Ab > 0:
     Sb = 1
 else:
     Sb = 0
-print('Sc:',Sr,Sg,Sb)
+#print('Sc:',Sr,Sg,Sb)
 #imgGray,minchannel = getMinChannel(img)
 #imgdark = imgdark/255
 Wr = math.tanh(4*abs(Ar))
